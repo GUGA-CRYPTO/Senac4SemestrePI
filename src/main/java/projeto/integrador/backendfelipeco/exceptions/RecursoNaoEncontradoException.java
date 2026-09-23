@@ -1,4 +1,9 @@
 package projeto.integrador.backendfelipeco.exceptions;
 
-public class RecursoNaoEncontrado {
-}
+public class RecursoNaoEncontradoException extends RuntimeException {
+
+        public RecursoNaoEncontradoException(String msg) {
+            super(msg);
+        }
+    }
+

@@ -1,4 +1,4 @@
-package projeto.integrador.backendfelipeco.dtos.clientedto;
+package projeto.integrador.backendfelipeco.dtos.clienteDto;
 
 import projeto.integrador.backendfelipeco.Entidades.enums.PerfilRisco;
 
@@ -50,4 +50,6 @@ public class ClienteRequestDTO {
     public void setPerfilRisco(PerfilRisco perfilRisco) {
         this.perfilRisco = perfilRisco;
     }
+
+
 }

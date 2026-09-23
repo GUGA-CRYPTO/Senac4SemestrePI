@@ -1,4 +1,7 @@
 package projeto.integrador.backendfelipeco.Entidades.enums;
 
-public class PerfilRisco {
+public enum PerfilRisco {
+    CONSERVADOR,
+    MODERADO,
+    ARROJADO
 }

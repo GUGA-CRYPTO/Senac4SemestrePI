@@ -1,5 +1,5 @@
 
-package projeto.integrador.backendfelipeco.dtos.TransacaoDTO;
+package projeto.integrador.backendfelipeco.dtos.transacaoDTO;
 
 import projeto.integrador.backendfelipeco.Entidades.enums.TipoTransacao;
 
