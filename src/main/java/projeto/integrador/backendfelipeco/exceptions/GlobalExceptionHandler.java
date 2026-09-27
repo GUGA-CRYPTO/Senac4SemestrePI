@@ -35,7 +35,6 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(err);
     }
 
-    // Tratamento genérico para qualquer outro erro não mapeado
     @ExceptionHandler(Exception.class)
     public ResponseEntity<StandardError> genericException(Exception e, HttpServletRequest request) {
         StandardError err = new StandardError(
