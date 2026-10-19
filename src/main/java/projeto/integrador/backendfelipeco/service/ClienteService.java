@@ -1,105 +1,119 @@
 package projeto.integrador.backendfelipeco.service;
 
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import projeto.integrador.backendfelipeco.Entidades.Cliente;
-import projeto.integrador.backendfelipeco.dtos.clienteDto.ClienteRequestDTO;
+import projeto.integrador.backendfelipeco.Entidades.enums.PerfilRisco;
+
 import projeto.integrador.backendfelipeco.dtos.clienteDto.ClienteResponseDTO;
-import projeto.integrador.backendfelipeco.exceptions.RecursoNaoEncontradoException;
+import projeto.integrador.backendfelipeco.dtos.clienteDto.FormularioRiscoDTO;
 import projeto.integrador.backendfelipeco.exceptions.RegraNegocioException;
+import projeto.integrador.backendfelipeco.exceptions.RecursoNaoEncontradoException;
 import projeto.integrador.backendfelipeco.repository.ClienteRepository;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.stream.Collectors;
-
 
 @Service
 public class ClienteService {
 
-    private ClienteRepository cliRepo;
+    private final ClienteRepository clienteRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    public ClienteService(ClienteRepository clienteRepository) {
-        this.cliRepo = clienteRepository;
+    public ClienteService(ClienteRepository clienteRepository, PasswordEncoder passwordEncoder) {
+        this.clienteRepository = clienteRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
+
     @Transactional
-    public ClienteResponseDTO salvar(ClienteRequestDTO dto) {
-        if (cliRepo.findByEmail(dto.getEmail()).isPresent()) {
-            throw new RegraNegocioException("Email já cadastrado");
+    public ClienteResponseDTO salvar(Cliente cliente) {
+        if (clienteRepository.findByEmail(cliente.getEmail()).isPresent()) {
+            throw new RegraNegocioException("E-mail já cadastrado no sistema.");
         }
 
-        Cliente cliente = new Cliente();
-        transformarEmEntidade(dto, cliente);
+        cliente.setSenha(passwordEncoder.encode(cliente.getSenha()));
+
         cliente.setSaldoAtual(BigDecimal.ZERO);
         cliente.setDataCadastro(LocalDateTime.now());
 
-        cliente = cliRepo.save(cliente);
-        return transformarEmResponse(cliente);
-
-    }
-
-
-    public List<ClienteResponseDTO> listar() {
-        return cliRepo.findAll().stream()
-                .map(this::transformarEmResponse)
-                .collect(Collectors.toList());
-    }
-
-
-    public ClienteResponseDTO buscarPorId(Long id){
-        Cliente cliente = buscarEntidadePorId(id);
-        return transformarEmResponse(cliente);
-    }
-
-    @Transactional
-    public ClienteResponseDTO atualizar(Long id,ClienteRequestDTO dto) {
-        Cliente cliente = buscarEntidadePorId(id);
-
-        if (!cliente.getEmail().equals(dto.getEmail()) && cliRepo.findByEmail(dto.getEmail()).isPresent()) {
-            throw new RegraNegocioException("Email já está em uso");
+        if (cliente.getSalarioMensal() == null) {
+            cliente.setSalarioMensal(BigDecimal.ZERO);
         }
 
-        transformarEmEntidade(dto, cliente);
-        cliente=cliRepo.save(cliente);
-        return transformarEmResponse(cliente);
-
+        cliente = clienteRepository.save(cliente);
+        return converterParaResponse(cliente);
     }
+
+
+    public ClienteResponseDTO buscarPorEmail(String emailLogado) {
+        Cliente cliente = clienteRepository.findByEmail(emailLogado)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Cliente não encontrado"));
+        return converterParaResponse(cliente);
+    }
+
 
     @Transactional
-    public void deletar(Long id) {
-        Cliente cliente = buscarEntidadePorId(id);
-        cliRepo.delete(cliente);
-    }
-
-    
+    public ClienteResponseDTO atualizar(String emailLogado, Cliente dadosAtualizados) {
+        Cliente clienteExistente = clienteRepository.findByEmail(emailLogado)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Cliente não encontrado"));
 
 
-    public Cliente buscarEntidadePorId(Long id) {
-        return cliRepo.findById(id)
-                .orElseThrow(() -> new RecursoNaoEncontradoException("Cliente não encontrado com ID: " + id));
-    }
+        if (dadosAtualizados.getNome() != null && !dadosAtualizados.getNome().isEmpty()) {
+            clienteExistente.setNome(dadosAtualizados.getNome());
+        }
 
-    public void transformarEmEntidade(ClienteRequestDTO dto, Cliente entidade) {
-        entidade.setNome(dto.getNome());
-        entidade.setEmail(dto.getEmail());
-        entidade.setSenha(dto.getSenha());
-        entidade.setSalarioMensal(dto.getSalarioMensal());
-        entidade.setPerfilRisco(dto.getPerfilRisco());
-    }
+        if (dadosAtualizados.getSalarioMensal() != null) {
+            clienteExistente.setSalarioMensal(dadosAtualizados.getSalarioMensal());
+        }
 
-    public ClienteResponseDTO transformarEmResponse(Cliente entidade){
-        ClienteResponseDTO response = new ClienteResponseDTO();
-        response.setId(entidade.getId());
-        response.setNome(entidade.getNome());
-        response.setSaldoAtual(entidade.getSaldoAtual());
-        response.setEmail(entidade.getEmail());
-        response.setSalarioMensal(entidade.getSalarioMensal());
-        response.setPerfilRisco(entidade.getPerfilRisco());
-        response.setDataCadastro(entidade.getDataCadastro());
-        return response;
+
+        if (dadosAtualizados.getSenha() != null && !dadosAtualizados.getSenha().isEmpty()) {
+            clienteExistente.setSenha(passwordEncoder.encode(dadosAtualizados.getSenha()));
+        }
+
+        clienteExistente = clienteRepository.save(clienteExistente);
+        return converterParaResponse(clienteExistente);
     }
 
 
+    @Transactional
+    public void deletar(String emailLogado) {
+        Cliente cliente = clienteRepository.findByEmail(emailLogado)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Cliente não encontrado"));
+        clienteRepository.delete(cliente);
+    }
+
+
+    @Transactional
+    public ClienteResponseDTO definirPerfilRisco(String emailLogado, FormularioRiscoDTO formulario) {
+        Cliente cliente = clienteRepository.findByEmail(emailLogado)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Cliente não encontrado"));
+
+        int pontos = formulario.getPontuacaoTotal();
+
+        if (pontos <= 4) {
+            cliente.setPerfilRisco(PerfilRisco.CONSERVADOR);
+        } else if (pontos <= 7) {
+            cliente.setPerfilRisco(PerfilRisco.MODERADO);
+        } else {
+            cliente.setPerfilRisco(PerfilRisco.ARROJADO);
+        }
+
+        cliente = clienteRepository.save(cliente);
+        return converterParaResponse(cliente);
+    }
+
+    private ClienteResponseDTO converterParaResponse(Cliente entidade) {
+        ClienteResponseDTO dto = new ClienteResponseDTO();
+        dto.setId(entidade.getId());
+        dto.setNome(entidade.getNome());
+        dto.setEmail(entidade.getEmail());
+        dto.setSaldoAtual(entidade.getSaldoAtual());
+        dto.setSalarioMensal(entidade.getSalarioMensal());
+        dto.setPerfilRisco(entidade.getPerfilRisco());
+        dto.setDataCadastro(entidade.getDataCadastro());
+        return dto;
+    }
 }

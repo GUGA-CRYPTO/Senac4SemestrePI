@@ -1,11 +1,13 @@
 package projeto.integrador.backendfelipeco.Entidades;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import projeto.integrador.backendfelipeco.Entidades.enums.PerfilRisco;
-import projeto.integrador.backendfelipeco.dtos.clienteDto.ClienteRequestDTO;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "tb_clientes")
@@ -36,7 +38,20 @@ public class Cliente {
 
 private LocalDateTime dataCadastro = LocalDateTime.now();
 
+@OneToMany(mappedBy = "cliente", cascade = CascadeType.ALL, orphanRemoval = true)
+@JsonIgnore
+private List<Transacao> transacoes = new ArrayList<>();
 
+
+    public void adicionarTransacao(Transacao transacao) {
+        this.transacoes.add(transacao);
+        transacao.setCliente(this);
+    }
+
+
+
+    public List<Transacao> getTransacoes() { return transacoes; }
+    public void setTransacoes(List<Transacao> transacoes) { this.transacoes = transacoes; }
 
     public Long getId() {
         return id;
